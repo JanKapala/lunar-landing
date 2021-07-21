@@ -13,6 +13,7 @@ tensorboard = "*"
 box2d-py = "*"
 ray = {extras = ["tune"], version = "*"}
 pandas = "*"
+pytorch-lightning = "*"
 
 [dev-packages]
 

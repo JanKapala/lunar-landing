@@ -1,3 +1,4 @@
+from torch import tanh
 from torch.nn import Module, Linear, ReLU, BatchNorm1d, Sequential
 
 
@@ -20,4 +21,5 @@ class Actor(Module):
 
     def forward(self, state):
         action = self.net(state)
+        action = 2*tanh(action)
         return action

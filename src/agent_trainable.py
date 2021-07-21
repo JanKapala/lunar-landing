@@ -10,7 +10,7 @@ from torch.optim import SGD
 
 from src.agent import Agent
 
-EPISODES_N = 100000
+EPISODES_N = 10000
 LAST_EPISODES_FACTOR = 0.1
 
 
@@ -26,8 +26,8 @@ class AgentTrainable(tune.Trainable):
             device="cpu",
             state_dim=state_dim,
             action_dim=action_dim,
-            actor_layer_sizes=[64],
-            critic_layer_sizes=[64],
+            actor_layer_sizes=[32, 32],
+            critic_layer_sizes=[32, 32],
             replay_buffer_max_size=1000,
             batch_size=config["batch_size"],
             learning_freq=config["learning_freq"],
@@ -76,7 +76,6 @@ class AgentTrainable(tune.Trainable):
         self.agent.train_steps_per_update = new_config["train_steps_per_update"]
 
         return True
-
 
     def save_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
