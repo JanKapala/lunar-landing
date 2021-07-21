@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+importlib-metadata = "==1.7.0"
+torch = "*"
+numpy = "*"
+gym = "*"
+hyperopt = {git = "https://github.com/hyperopt/hyperopt.git"}
+tensorboard = "*"
+box2d-py = "*"
+ray = {extras = ["tune"], version = "*"}
+pandas = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.7"
