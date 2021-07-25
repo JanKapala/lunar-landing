@@ -43,6 +43,7 @@ class Agent:
             actor_layer_sizes = [64, 32, 16]
         self.device = device
 
+        self.action_dim = action_dim
         self.μ_θ = Actor(
             state_dim=state_dim,
             action_dim=action_dim,
@@ -105,7 +106,7 @@ class Agent:
         with torch.no_grad():
             A = self.μ_θ(S)
             if self.exploration:
-                A = self._add_noise(A)
+                A = self._ornstein_uhlenbeck_process(A)
             A = self._prepare_action(A)
 
         self._last_A = A
@@ -201,7 +202,20 @@ class Agent:
         epsilon = deviation * self.noise_scale * (-1) ** random.randint(0, 1)
         noised_action = torch.max(torch.min(action + epsilon, high), low)
 
-        noised_action.to(self.device)
+        noised_action = noised_action.to(self.device)
+
+        return noised_action
+
+    def _ornstein_uhlenbeck_process(self, action, mu=0, dt=0.1, std=0.2):
+        """Ornstein–Uhlenbeck process"""
+
+        action = action.cpu()
+
+        dt_sqrt = torch.sqrt(torch.tensor(dt))
+        normal = torch.normal(mean=torch.zeros(self.action_dim))
+        noised_action = action + self.noise_scale * (mu - action) * dt + std * dt_sqrt * normal
+
+        noised_action = noised_action.to(self.device)
 
         return noised_action
 
