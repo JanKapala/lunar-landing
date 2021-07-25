@@ -220,10 +220,12 @@ class Agent:
         return noised_action
 
     def to(self, device):
-        if self.writer is not None:
-            raise Exception("It is impossible to copy agent with self.writer object. Set it to None and try again.")
+        writer = self.writer
+        self.writer = None
 
         new_agent = deepcopy(self)
+        self.writer = writer
+        new_agent.writer = writer
 
         new_agent.device = device
 
