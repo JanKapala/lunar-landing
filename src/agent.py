@@ -84,6 +84,7 @@ class Agent:
         self._last_A = None
 
         self.steps_counter = 0
+        self.episodes_counter = 0
 
         self.returns = []
         self._last_return = 0
@@ -120,9 +121,8 @@ class Agent:
             return_val = copy(self._last_return)
             self.returns.append(return_val)
             self._last_return = 0
-            if self.writer is not None:
-                self.writer.add_scalar("Return", return_val, self.steps_counter)
-                self.writer.flush()
+            self._log()
+            self.episodes_counter += 1
 
         S = self._last_S
         A = self._last_A
@@ -250,3 +250,22 @@ class Agent:
         new_agent.Q_Φ_optimizer = SGD(new_agent.Q_Φ.parameters(), new_agent.Q_Φ_α)
 
         return new_agent
+
+    def _log(self):
+        if self.writer is None:
+            return
+
+        nets = {
+            "μ_θ": self.μ_θ,
+            "Q_Φ": self.Q_Φ,
+            "μ_θ_targ": self.μ_θ_targ,
+            "Q_Φ_targ": self.Q_Φ_targ,
+        }
+        for net_name, net in nets.items():
+            for param_name, param in net.named_parameters():
+                self.writer.add_histogram(f"{net_name} {param_name}", param.data, self.episodes_counter)
+
+        self.writer.add_scalar("Return", self.returns[-1], self.episodes_counter)
+        self.writer.add_scalar("Replay Buffer size", len(self.Ɗ.buffer), self.steps_counter)
+
+        self.writer.flush()
