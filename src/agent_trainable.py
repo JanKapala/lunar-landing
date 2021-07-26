@@ -35,7 +35,7 @@ class AgentTrainable(tune.Trainable):
             μ_θ_α=config["μ_θ_α"],
             Q_Φ_α=config["Q_Φ_α"],
             ρ=config["ρ"],
-            noise_scale=config["noise_scale"],
+            noise_scale=config["noise_sigma"],
             train_after=1,
             exploration=True,
             train_steps_per_update=config["train_steps_per_update"],
@@ -72,7 +72,7 @@ class AgentTrainable(tune.Trainable):
         self.agent.Q_Φ_α = new_config["Q_Φ_α"]
         self.agent.Q_Φ_optimizer = SGD(self.agent.Q_Φ.parameters(), self.agent.Q_Φ_α)
         self.agent.ρ = new_config["ρ"]
-        self.agent.noise_scale = new_config["noise_scale"]
+        self.agent.noise_sigma = new_config["noise_sigma"]
         self.agent.train_steps_per_update = new_config["train_steps_per_update"]
 
         return True
