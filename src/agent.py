@@ -1,14 +1,16 @@
 import random
 from copy import deepcopy, copy
 
+import numpy as np
 import torch
 from torch.nn import MSELoss, DataParallel
 from torch.nn.utils import clip_grad_value_, clip_grad_norm_
-from torch.optim import SGD
+from torch.optim import SGD, Adam
 
 from src.actor import Actor
 from src.critic import Critic
 from src.replay_buffer import ReplayBuffer
+from src.ounoise import OUNoise
 
 class Agent:
     def __init__(
@@ -72,10 +74,10 @@ class Agent:
         self.MSE = MSELoss()
 
         self.μ_θ_α = μ_θ_α
-        self.μ_θ_optimizer = SGD(self.μ_θ.parameters(), μ_θ_α)
+        self.μ_θ_optimizer = Adam(self.μ_θ.parameters(), μ_θ_α)
 
         self.Q_Φ_α = Q_Φ_α
-        self.Q_Φ_optimizer = SGD(self.Q_Φ.parameters(), Q_Φ_α)
+        self.Q_Φ_optimizer = Adam(self.Q_Φ.parameters(), Q_Φ_α)
 
         self.ρ = ρ
         self.noise_scale = noise_scale
@@ -99,6 +101,8 @@ class Agent:
         self.action_low = action_low
         self.action_high = action_high
 
+        self.ounoise = OUNoise(mu=np.zeros(self.action_dim))
+
     def act(self, S):
         self._last_S = S
 
@@ -107,11 +111,10 @@ class Agent:
         with torch.no_grad():
             A = self.μ_θ(S)
             if self.exploration:
-                A = self._ornstein_uhlenbeck_process(A)
+                A = self._add_noise(A)
             A = self._prepare_action(A)
 
         self._last_A = A
-
         return A
 
     def observe(self, R, S_prim, d):
@@ -179,10 +182,11 @@ class Agent:
         self.μ_θ_optimizer.step()
 
     def _target_nets_train_step(self):
-        for Φ, Φ_targ in zip(self.Q_Φ.parameters(), self.Q_Φ_targ.parameters()):
-            Φ_targ.data = self.ρ * Φ_targ.data + (1 - self.ρ) * Φ.data
-        for θ, θ_targ in zip(self.μ_θ.parameters(), self.μ_θ_targ.parameters()):
-            θ_targ.data = self.ρ * θ_targ.data + (1 - self.ρ) * θ.data
+        with torch.no_grad():
+            for Φ, Φ_targ in zip(self.Q_Φ.parameters(), self.Q_Φ_targ.parameters()):
+                Φ_targ.data = self.ρ * Φ_targ.data + (1 - self.ρ) * Φ.data
+            for θ, θ_targ in zip(self.μ_θ.parameters(), self.μ_θ_targ.parameters()):
+                θ_targ.data = self.ρ * θ_targ.data + (1 - self.ρ) * θ.data
 
     def _prepare_state(self, S):
         state_batch = torch.Tensor(S).unsqueeze(0).to(self.device)
@@ -192,21 +196,25 @@ class Agent:
         A = A.squeeze_(0).cpu().numpy()
         return A
 
-    def _add_noise(self, action):
-        action = action.cpu()
-        low = torch.Tensor(self.action_low)
-        high = torch.Tensor(self.action_high)
-        the_range = high - low
-        normal = torch.normal(0.5, 0.5 * 1 / 3, (2,))
-        deviation = the_range * normal
-        epsilon = deviation * self.noise_scale * (-1) ** random.randint(0, 1)
-        noised_action = torch.max(torch.min(action + epsilon, high), low)
+    # def _add_noise(self, action):
+    #     action = action.cpu()
+    #     low = torch.Tensor(self.action_low)
+    #     high = torch.Tensor(self.action_high)
+    #     the_range = high - low
+    #     normal = torch.normal(0.5, 0.5 * 1 / 3, (2,))
+    #     deviation = the_range * normal
+    #     epsilon = deviation * self.noise_scale * (-1) ** random.randint(0, 1)
+    #     noised_action = torch.max(torch.min(action + epsilon, high), low)
+    #
+    #     noised_action = noised_action.to(self.device)
+    #
+    #     return noised_action
 
-        noised_action = noised_action.to(self.device)
+    # def _add_noise(self, action):
+    #     noised_action = action + self.ounoise().to(self.device)
+    #     return noised_action
 
-        return noised_action
-
-    def _ornstein_uhlenbeck_process(self, action, mu=0, dt=0.1, std=0.2):
+    def _add_noise(self, action, mu=0, dt=0.1, std=0.2):
         """Ornstein–Uhlenbeck process"""
 
         action = action.cpu()
@@ -248,8 +256,8 @@ class Agent:
         new_agent.Q_Φ_targ.to(new_agent.device)
 
         # Optimizer has to be instantiated after moving nets to selected device
-        new_agent.μ_θ_optimizer = SGD(new_agent.μ_θ.parameters(), new_agent.μ_θ_α)
-        new_agent.Q_Φ_optimizer = SGD(new_agent.Q_Φ.parameters(), new_agent.Q_Φ_α)
+        new_agent.μ_θ_optimizer = Adam(new_agent.μ_θ.parameters(), new_agent.μ_θ_α)
+        new_agent.Q_Φ_optimizer = Adam(new_agent.Q_Φ.parameters(), new_agent.Q_Φ_α)
 
         return new_agent
 
