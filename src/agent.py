@@ -136,7 +136,7 @@ class Agent:
         S = self._last_S
         A = self._last_A
 
-        self.Ɗ << (S, A, R/10, S_prim, d)
+        self.Ɗ << (S, A, R, S_prim, d) # reward przez 10
 
         self.steps_counter += 1
 
