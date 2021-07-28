@@ -8,14 +8,22 @@ importlib-metadata = "==1.7.0"
 torch = "*"
 numpy = "*"
 gym = "*"
-hyperopt = {git = "https://github.com/hyperopt/hyperopt.git"}
 tensorboard = "*"
 box2d-py = "*"
-ray = {extras = ["tune"], version = "*"}
 pandas = "*"
 pytorch-lightning = "*"
+matplotlib = "*"
+jupyter = "*"
+torchvision = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.7"
+
+[packages.hyperopt]
+git = "https://github.com/hyperopt/hyperopt.git"
+
+[packages.ray]
+extras = [ "tune",]
+version = "*"
