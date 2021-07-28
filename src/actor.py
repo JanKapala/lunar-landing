@@ -19,14 +19,14 @@ class Actor(Module):
             ]
 
         # Initialization of all layers except last
-        # for layer in layers:
-        #     if isinstance(layer, Linear):
-        #         torch.nn.init.uniform_(layer.weight, a=-0.004, b=0.004)
-        #         torch.nn.init.xavier_uniform_(layer.weight)
+        for layer in layers:
+            if isinstance(layer, Linear):
+                # torch.nn.init.uniform_(layer.weight, a=-0.004, b=0.004)
+                torch.nn.init.xavier_uniform_(layer.weight)
 
         # Initialization of last layer
         last = Linear(layer_sizes[-1], action_dim)
-        last.weight.data.uniform_(-epsilon, epsilon)  # Due to tanh activation and vanishing gradients
+        torch.nn.init.uniform_(last.weight, a=-epsilon, b=epsilon)  # Due to tanh activation and vanishing gradients
         layers.append(last)
 
         self.net = Sequential(*layers)

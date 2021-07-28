@@ -110,14 +110,17 @@ class Agent:
         self._last_S = S
 
         S = self._prepare_state(S)
-        self.μ_θ.eval()
+        # self.μ_θ.eval()
         with torch.no_grad():
             A = self.μ_θ(S)
             if self.exploration:
                 A = self._add_noise(A)
             A = self._prepare_action(A)
 
+        # self.μ_θ.train()
+
         self._last_A = A
+
         return A
 
     def observe(self, R, S_prim, d):
@@ -133,7 +136,7 @@ class Agent:
         S = self._last_S
         A = self._last_A
 
-        self.Ɗ << (S, A, R, S_prim, d)
+        self.Ɗ << (S, A, R/10, S_prim, d)
 
         self.steps_counter += 1
 
@@ -161,10 +164,9 @@ class Agent:
     def _critic_train_step(self, batch):
         S, A, R, S_prim, d = batch
 
-        self.μ_θ.eval()
         with torch.no_grad():
             y = R + self.γ * (1 - d) * self.Q_Φ_targ(S_prim, self.μ_θ_targ(S_prim))
-        self.Q_Φ.train()
+
         self.Q_Φ_optimizer.zero_grad()
         Q_Φ_ℒ = self.MSE(self.Q_Φ(S, A), y)
         Q_Φ_ℒ.backward()
@@ -175,8 +177,6 @@ class Agent:
     def _actor_train_step(self, batch):
         S, A, R, S_prim, d = batch
 
-        self.Q_Φ.eval()
-        self.μ_θ.train()
         self.μ_θ_optimizer.zero_grad()
         μ_θ_ℒ = -torch.mean(self.Q_Φ(S, self.μ_θ(S)))  # Minus because gradient ascent
         μ_θ_ℒ.backward()
