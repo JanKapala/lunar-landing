@@ -36,7 +36,7 @@ if __name__ == "__main__":
         "μ_θ_α": tune.loguniform(1e-6, 1e-1),
         "Q_Φ_α": tune.loguniform(1e-6, 1e-1),
         "ρ": tune.loguniform(0.5, 0.95),
-        "noise_scale": tune.uniform(0, 1),
+        "_noise_sigma": tune.uniform(0, 1),
         "train_steps_per_update": tune.choice([2 ** x for x in range(0, 6)]),
     }
 
