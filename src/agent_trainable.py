@@ -35,7 +35,7 @@ class AgentTrainable(tune.Trainable):
             μ_θ_α=config["μ_θ_α"],
             Q_Φ_α=config["Q_Φ_α"],
             ρ=config["ρ"],
-            noise_scale=config["noise_sigma"],
+            noise_scale=config["_noise_sigma"],
             train_after=1,
             exploration=True,
             train_steps_per_update=config["train_steps_per_update"],
