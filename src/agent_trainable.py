@@ -28,7 +28,7 @@ class AgentTrainable(tune.Trainable):
         action_high = self.env.action_space.high
 
         self.agent = Agent(
-            device="cuda",
+            device="cpu",
             state_dim=state_dim,
             action_dim=action_dim,
             action_high=action_high,
@@ -49,6 +49,9 @@ class AgentTrainable(tune.Trainable):
             writer=None,
         )
 
+        if torch.cuda.is_available():
+            self.agent = self.agent.to("cuda")
+
     def step(self):
         simulate(self.env, self.agent, episodes=EPISODES_N,
                  max_episode_steps=MAX_EPISODE_STEPS, render=False)
@@ -61,19 +64,17 @@ class AgentTrainable(tune.Trainable):
     def cleanup(self):
         self.env.close()
 
-    # def reset_config(self, new_config):
-    #     self.agent.replay_buffer_max_size = new_config["replay_buffer_max_size"]
-    #     self.agent.batch_size = new_config["batch_size"]
-    #     self.agent.learning_freq = new_config["learning_freq"]
-    #     self.agent.γ = new_config["γ"]
-    #     self.agent.μ_θ_α = new_config["μ_θ_α"]
-    #     self.agent.Q_Φ_α = new_config["Q_Φ_α"]
-    #     self.agent.ρ = new_config["ρ"]
-    #     self.agent.noise_sigma = new_config["noise_sigma"]
-    #     # self.agent.train_steps_per_update = new_config["train_steps_per_update"]
-    #     self.agent.train_steps_per_update = new_config["learning_freq"],  # keep them synchronized to keep the same execution time
-    #
-    #     return True
+    def _update_agent_params(self, config):
+        for hp_name, hp_value in config.items():
+            setattr(self.agent, hp_name, hp_value)
+
+        # train_steps_per_update and learning_freq should be
+        # synchronized to keep the same execution time among trials
+        self.agent.train_steps_per_update = config["learning_freq"]
+
+    def reset_config(self, new_config):
+        self._update_agent_params(new_config)
+        return True
 
     def save_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
@@ -83,21 +84,16 @@ class AgentTrainable(tune.Trainable):
     def load_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
 
-        # PBT exploitation phase is realized via `load_checkpoint` method so we
-        # want to load saved agent with its:
+        # PBT exploitation phase is carried out by `load_checkpoint` method so
+        # we want to load saved agent with its:
         #   - weights,
         #   - optimizers,
         #   - replay buffer,
         #   - etc
-        # but we want to use current config's hyperparams rather than loaded agent
-        # hyperparams, so we have to update them:
+        # but we want to use current config's hyperparams rather than loaded
+        # agent hyperparams, so we have to update them after agent loading.
 
         self.agent = Agent.load(path)
-
-        for hp_name, hp_value in self.config.items():
-            setattr(self.agent, hp_name, hp_value)
-
-        # train_steps_per_update and learning_freq should be
-        # synchronized to keep the same execution time among trials
-        self.agent.train_steps_per_update = self.config["learning_freq"]
-
+        if torch.cuda.is_available():
+            self.agent = self.agent.to("cuda")
+        self._update_agent_params(self.config)
