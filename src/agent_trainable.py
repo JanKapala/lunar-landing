@@ -77,7 +77,7 @@ class AgentTrainable(tune.Trainable):
 
     def save_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
-        self.agent.save(path)
+        self.agent.save(path, suppress_warning=True)
         return tmp_checkpoint_dir
 
     def load_checkpoint(self, tmp_checkpoint_dir):

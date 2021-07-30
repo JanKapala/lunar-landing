@@ -328,14 +328,15 @@ class Agent:
         mean_return = torch.mean(torch.Tensor(self.returns[-last_n_episodes:])).item()
         return mean_return
 
-    def save(self, file_path):
+    def save(self, file_path, suppress_warning=False):
         writer = self.writer
         self.writer = None
         with open(file_path, "wb") as file:
             pickle.dump(self, file)
         self.writer = writer
-        print("Agent saved successfully! agent.writer object can't be saved so"
-              " this filed has been set to `None`")
+        if not suppress_warning:
+            print("Agent saved successfully! (agent.writer object can't be saved so"
+                  " this field has been set to `None`)")
 
     @classmethod
     def load(cls, file_path):
