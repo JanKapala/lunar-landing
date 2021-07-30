@@ -265,38 +265,44 @@ class Agent:
         writer = self.writer
         self.writer = None
 
-        new_agent = deepcopy(self)
+        new = deepcopy(self)
         self.writer = writer
-        new_agent.writer = writer
+        new.writer = writer
 
-        new_agent.device = device
+        new.device = device
 
-        if new_agent.device == "cuda":
+        if new.device == "cuda":
             if torch.cuda.is_available():
                 if torch.cuda.device_count() > 1:
-                    new_agent.μ_θ = DataParallel(new_agent.μ_θ)
-                    new_agent.Q_Φ = DataParallel(new_agent.Q_Φ)
+                    new.μ_θ = DataParallel(new.μ_θ)
+                    new.Q_Φ = DataParallel(new.Q_Φ)
             else:
-                new_agent.device = "cpu"
+                new.device = "cpu"
 
-        new_agent.μ_θ_targ = deepcopy(new_agent.μ_θ)
-        new_agent.Q_Φ_targ = deepcopy(new_agent.Q_Φ)
-        new_agent.μ_θ_targ.eval()
-        new_agent.Q_Φ_targ.eval()
+        new.μ_θ_targ = deepcopy(new.μ_θ)
+        new.Q_Φ_targ = deepcopy(new.Q_Φ)
+        new.μ_θ_targ.eval()
+        new.Q_Φ_targ.eval()
 
-        new_agent.μ_θ = new_agent.μ_θ.to(new_agent.device)
-        new_agent.Q_Φ = new_agent.Q_Φ.to(new_agent.device)
-        new_agent.μ_θ_targ = new_agent.μ_θ_targ.to(new_agent.device)
-        new_agent.Q_Φ_targ = new_agent.Q_Φ_targ.to(new_agent.device)
+        new.μ_θ = new.μ_θ.to(new.device)
+        new.Q_Φ = new.Q_Φ.to(new.device)
+        new.μ_θ_targ = new.μ_θ_targ.to(new.device)
+        new.Q_Φ_targ = new.Q_Φ_targ.to(new.device)
 
-        # Optimizer has to be instantiated after moving nets to selected device
-        new_agent.μ_θ_optimizer = Adam(new_agent.μ_θ.parameters(), new_agent.μ_θ_α)
-        new_agent.Q_Φ_optimizer = Adam(new_agent.Q_Φ.parameters(), new_agent.Q_Φ_α)
+        # Optimizers has to be re-instantiated after moving nets to selected device
+        new.μ_θ_optimizer = new.μ_θ_optimizer.__class__(
+            new.μ_θ.parameters(),
+            new.μ_θ_α
+        )
+        new.Q_Φ_optimizer = new.Q_Φ_optimizer.__class__(
+            new.μ_θ.parameters(),
+            new.μ_θ_α
+        )
 
-        new_agent.μ_θ.action_scale = new_agent.μ_θ.action_scale.to(new_agent.device)
-        new_agent.μ_θ_targ.action_scale = new_agent.μ_θ_targ.action_scale.to(new_agent.device)
+        new.μ_θ.action_scale = new.μ_θ.action_scale.to(new.device)
+        new.μ_θ_targ.action_scale = new.μ_θ_targ.action_scale.to(new.device)
 
-        return new_agent
+        return new
 
     def _log(self):
         if self.writer is None:
