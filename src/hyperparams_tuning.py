@@ -67,6 +67,7 @@ if __name__ == "__main__":
         perturbation_interval=1,
         hyperparam_mutations=config,
         custom_explore_fn=explore,
+        resample_probability=0.25,
         synch=True
     )
 
