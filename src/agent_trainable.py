@@ -13,7 +13,7 @@ from src.simulation import simulate
 
 EPISODES_N = 10
 MAX_EPISODE_STEPS = 1000
-LAST_EPISODES_FACTOR = 1
+LAST_EPISODES = 10
 
 
 class AgentTrainable(tune.Trainable):
@@ -63,8 +63,7 @@ class AgentTrainable(tune.Trainable):
             progress_bar=False
         )
 
-        last_n_episodes = int(LAST_EPISODES_FACTOR * EPISODES_N)
-        mean_return = self.agent.evaluate(last_n_episodes)
+        mean_return = self.agent.evaluate(LAST_EPISODES)
 
         return {"mean_return": mean_return}
 
