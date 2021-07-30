@@ -8,7 +8,15 @@ class ReplayBuffer:
     def __init__(self, batch_size=1, max_size=None):
         self.buffer = []
         self.batch_size = batch_size
-        self.max_size = max_size
+        self._max_size = int(max_size)
+
+    @property
+    def max_size(self):
+        return self._max_size
+
+    @max_size.setter
+    def max_size(self, new_value):
+        self._max_size = int(new_value)
 
     def __lshift__(self, record):
         self._add_record(record)
@@ -29,8 +37,8 @@ class ReplayBuffer:
 
         record = state, action, reward, next_state, done
 
-        if self.max_size is not None and len(self.buffer) == self.max_size:
-            self.buffer.pop(0)
+        if self._max_size is not None and len(self.buffer) >= self._max_size:
+            self.buffer = self.buffer[-(self._max_size - 1):]
         self.buffer.append(record)
 
     def __iter__(self):

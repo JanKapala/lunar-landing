@@ -72,6 +72,7 @@ class Agent:
 
         # Replay Buffer
         self._batch_size = batch_size
+        self._replay_buffer_max_size = replay_buffer_max_size
         self.Ɗ = ReplayBuffer(
             max_size=replay_buffer_max_size,
             batch_size=batch_size
@@ -121,6 +122,15 @@ class Agent:
     def noise_sigma(self, new_value):
         self._noise_sigma = new_value
         self._ouprocess.sigma = new_value
+
+    @property
+    def replay_buffer_max_size(self):
+        return self._replay_buffer_max_size
+
+    @noise_sigma.setter
+    def replay_buffer_max_size(self, new_value):
+        self._replay_buffer_max_size = new_value
+        self.Ɗ._max_size = new_value
 
     def act(self, S):
         self._last_S = S
