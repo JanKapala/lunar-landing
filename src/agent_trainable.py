@@ -17,6 +17,8 @@ LAST_EPISODES_FACTOR = 0.1
 
 class AgentTrainable(tune.Trainable):
     def setup(self, config):
+        self.config = config
+
         # Instantiate environment and agent
         self.env = gym.make("LunarLanderContinuous-v2")
 
@@ -89,12 +91,27 @@ class AgentTrainable(tune.Trainable):
 
     def save_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
-        with open(path, 'wb') as file:
-            pickle.dump(self.agent, file)
+        self.agent.save(path)
         return tmp_checkpoint_dir
 
     def load_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
-        with open(path, 'rb') as file:
-            self.agent = pickle.load(file)
-            self.agent = self.agent.to("cpu")
+
+        # PBT exploitation phase is realized via `load_checkpoint` method so we
+        # want to load saved agent with its:
+        #   - weights,
+        #   - optimizers,
+        #   - replay buffer,
+        #   - etc
+        # but we want to use current config's hyperparams rather than loaded agent
+        # hyperparams, so we have to update them:
+
+        self.agent = Agent.load(path)
+
+        for hp_name, hp_value in self.config.items():
+            setattr(self.agent, hp_name, hp_value)
+
+        # train_steps_per_update and learning_freq should be
+        # synchronized to keep the same execution time among trials
+        self.agent.train_steps_per_update = self.config["learning_freq"]
+
