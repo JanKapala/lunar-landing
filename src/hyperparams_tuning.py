@@ -5,6 +5,12 @@ from ray.tune.schedulers import PopulationBasedTraining
 from definitions import LOG_DIR
 from src.agent_trainable import AgentTrainable
 
+# Ray Tune verbosity modes
+SILENT = 0
+ONLY_STATUS_UPDATES = 1
+STATUS_AND_BRIEF_TRIAL_RESULTS = 2
+STATUS_AND_DETAILED_TRIAL_RESULTS = 3
+
 if __name__ == "__main__":
     CPU_N = 12
     GPU_N = 1
@@ -14,7 +20,7 @@ if __name__ == "__main__":
     MAX_CPU_N = PERC_SYSTEM_LOAD*CPU_N
     MAX_GPU_N = PERC_SYSTEM_LOAD*GPU_N
 
-    TRIALS_N = 4
+    TRIALS_N = 100
 
     cpu_per_trial = MAX_CPU_N/TRIALS_N
     if cpu_per_trial > 1:
@@ -30,7 +36,7 @@ if __name__ == "__main__":
     """)
 
     config = {
-        "replay_buffer_max_size": tune.loguniform(1e3, 1e6),
+        "replay_buffer_max_size": tune.choice([10 ** x for x in range(3, 7)]),
         "batch_size": tune.choice([2 ** x for x in range(2, 10)]),
         "learning_freq": tune.choice([2 ** x for x in range(0, 5)]),
         "γ": tune.uniform(0.9, 1),
@@ -38,7 +44,6 @@ if __name__ == "__main__":
         "Q_Φ_α": tune.loguniform(1e-6, 1e-1),
         "ρ": tune.loguniform(0.5, 0.95),
         "noise_sigma": tune.uniform(0, 1),
-        # "train_steps_per_update": tune.choice([2 ** x for x in range(0, 5)]),
     }
 
     # Utility function
@@ -51,7 +56,7 @@ if __name__ == "__main__":
 
     # Postprocess the perturbed config to ensure it's still valid
     def explore(config):
-        clip_limits(config, "replay_buffer_max_size", 1e3, 1e6)
+        clip_limits(config, "replay_buffer_max_size", 10**3, 10**6)
         clip_limits(config, "batch_size", 2, 10)
         clip_limits(config, "learning_freq", 1, 32)
         clip_limits(config, "γ", 0.9, 1)
@@ -78,12 +83,13 @@ if __name__ == "__main__":
         metric="mean_return",
         mode="max",
         fail_fast=True,
-        stop={"training_iteration": 20, "mean_return": 200},
+        stop={"training_iteration": 400, "mean_return": 200},
         num_samples=TRIALS_N,
-        resources_per_trial={'cpu': cpu_per_trial, 'gpu': gpu_per_trial},
+        resources_per_trial={'cpu': cpu_per_trial, 'gpu': 0}, # cpu_per_trial, gpu_per_trial
         local_dir=LOG_DIR,
-        # verbose=False
-        # reuse_actors=True,
+        verbose=ONLY_STATUS_UPDATES,
+        reuse_actors=True,
+        queue_trials=True,
     )
 
     print("Best config: ", analysis.get_best_config(metric="mean_return", mode="max"))
