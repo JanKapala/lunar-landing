@@ -82,8 +82,7 @@ if __name__ == "__main__":
         resources_per_trial={'cpu': cpu_per_trial, 'gpu': gpu_per_trial},
         local_dir=LOG_DIR,
         # verbose=False
-        reuse_actors=True,
-
+        # reuse_actors=True,
     )
 
     print("Best config: ", analysis.get_best_config(metric="mean_return", mode="max"))

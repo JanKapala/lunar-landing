@@ -73,21 +73,19 @@ class AgentTrainable(tune.Trainable):
     def cleanup(self):
         self.env.close()
 
-    def reset_config(self, new_config):
-        self.agent.replay_buffer_max_size = new_config["replay_buffer_max_size"],
-        self.agent.batch_size = new_config["batch_size"]
-        self.agent.learning_freq = new_config["learning_freq"]
-        self.agent.γ = new_config["γ"]
-        self.agent.μ_θ_α = new_config["μ_θ_α"]
-        self.agent.μ_θ_optimizer = Adam(self.agent.μ_θ.parameters(), self.agent.μ_θ_α)
-        self.agent.Q_Φ_α = new_config["Q_Φ_α"]
-        self.agent.Q_Φ_optimizer = Adam(self.agent.Q_Φ.parameters(), self.agent.Q_Φ_α)
-        self.agent.ρ = new_config["ρ"]
-        self.agent.noise_sigma = new_config["noise_sigma"]
-        # self.agent.train_steps_per_update = new_config["train_steps_per_update"]
-        self.agent.train_steps_per_update = new_config["learning_freq"],  # keep them synchronized to keep the same execution time
-
-        return True
+    # def reset_config(self, new_config):
+    #     self.agent.replay_buffer_max_size = new_config["replay_buffer_max_size"]
+    #     self.agent.batch_size = new_config["batch_size"]
+    #     self.agent.learning_freq = new_config["learning_freq"]
+    #     self.agent.γ = new_config["γ"]
+    #     self.agent.μ_θ_α = new_config["μ_θ_α"]
+    #     self.agent.Q_Φ_α = new_config["Q_Φ_α"]
+    #     self.agent.ρ = new_config["ρ"]
+    #     self.agent.noise_sigma = new_config["noise_sigma"]
+    #     # self.agent.train_steps_per_update = new_config["train_steps_per_update"]
+    #     self.agent.train_steps_per_update = new_config["learning_freq"],  # keep them synchronized to keep the same execution time
+    #
+    #     return True
 
     def save_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
