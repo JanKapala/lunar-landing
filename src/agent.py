@@ -132,7 +132,7 @@ class Agent:
     def replay_buffer_max_size(self):
         return self._replay_buffer_max_size
 
-    @noise_sigma.setter
+    @replay_buffer_max_size.setter
     def replay_buffer_max_size(self, new_value):
         self._replay_buffer_max_size = new_value
         self.Ɗ._max_size = new_value
