@@ -16,6 +16,11 @@ def negative_mean_loss_function(x):
     return -torch.mean(x)
 
 
+def set_optimizer_lr(optimizer, new_lr):
+    for g in optimizer.param_groups:
+        g["lr"] = new_lr
+
+
 class Agent:
     def __init__(
             self,
@@ -49,7 +54,7 @@ class Agent:
         ).to(device)
 
         self.μ_θ_ℒ_function = negative_mean_loss_function  # Negative because gradient ascent
-        self.μ_θ_α = μ_θ_α
+        self._μ_θ_α = μ_θ_α
         self.μ_θ_optimizer = Adam(self.μ_θ.parameters(), μ_θ_α)
 
         # Critic
@@ -60,7 +65,7 @@ class Agent:
         ).to(device)
 
         self.Q_Φ_ℒ_function = MSELoss()
-        self.Q_Φ_α = Q_Φ_α
+        self._Q_Φ_α = Q_Φ_α
         self.Q_Φ_optimizer = Adam(self.Q_Φ.parameters(), Q_Φ_α)
 
         # Target networks
@@ -131,6 +136,24 @@ class Agent:
     def replay_buffer_max_size(self, new_value):
         self._replay_buffer_max_size = new_value
         self.Ɗ._max_size = new_value
+
+    @property
+    def μ_θ_α(self):
+        return self._μ_θ_α
+
+    @μ_θ_α.setter
+    def μ_θ_α(self, new_value):
+        self._μ_θ_α = new_value
+        set_optimizer_lr(self.μ_θ_optimizer, new_value)
+
+    @property
+    def Q_Φ_α(self):
+        return self._Q_Φ_α
+
+    @Q_Φ_α.setter
+    def Q_Φ_α(self, new_value):
+        self._Q_Φ_α = new_value
+        set_optimizer_lr(self.Q_Φ_optimizer, new_value)
 
     def act(self, S):
         self._last_S = S
