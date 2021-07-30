@@ -12,7 +12,7 @@ from src.agent import Agent
 
 EPISODES_N = 10
 MAX_EPISODE_STEPS = 1000
-LAST_EPISODES_FACTOR = 0.1
+LAST_EPISODES_FACTOR = 1
 
 
 class AgentTrainable(tune.Trainable):
