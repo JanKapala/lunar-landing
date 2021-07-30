@@ -1,12 +1,7 @@
 import os
-import pickle
-import logging
-
 import gym
 import torch
-
 from ray import tune
-from torch.optim import SGD, Adam
 
 from src.agent import Agent
 from src.simulation import simulate
