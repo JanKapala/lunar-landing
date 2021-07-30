@@ -13,17 +13,13 @@ def simulate(env, agent, episodes, render=True, max_episode_steps=None):
         episode_steps = 0
         while True:
             if render:
-                # timeit(env.render)()
                 env.render()
 
-            # A = timeit(agent.act)(S)
             A = agent.act(S)
-            # S_prim, R, d, _ = timeit(env.step)(A)
             S_prim, R, d, _ = env.step(A)
 
             if max_episode_steps is not None and episode_steps >= max_episode_steps:
                 d = True
-            # timeit(agent.observe)(R, S_prim, d)
             agent.observe(R, S_prim, d)
             S = S_prim
             episode_steps += 1
