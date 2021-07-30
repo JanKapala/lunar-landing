@@ -44,8 +44,9 @@ class AgentTrainable(tune.Trainable):
             exploration=True,
             noise_sigma=config["noise_sigma"],
             train_after=1,
-            # train_steps_per_update=config["train_steps_per_update"],
-            train_steps_per_update=config["learning_freq"],  # keep them synchronized to keep the same execution time
+            # train_steps_per_update and learning_freq should be
+            # synchronized to keep the same execution time among trials
+            train_steps_per_update=config["learning_freq"],
             writer=None,
         )
 
