@@ -9,6 +9,7 @@ from ray import tune
 from torch.optim import SGD, Adam
 
 from src.agent import Agent
+from src.simulation import simulate
 
 EPISODES_N = 10
 MAX_EPISODE_STEPS = 1000
@@ -48,25 +49,12 @@ class AgentTrainable(tune.Trainable):
             writer=None,
         )
 
-        # self.agent = self.agent.to("cpu")
-
     def step(self):
-        for episode_i in range(EPISODES_N):
-            S = self.env.reset()
-            episode_steps = 0
-            while True:
-                A = self.agent.act(S)
-                S_prim, R, d, _ = self.env.step(A)
-                if MAX_EPISODE_STEPS is not None and episode_steps >= MAX_EPISODE_STEPS:
-                    d = True
-                self.agent.observe(R, S_prim, d)
-                S = S_prim
-                episode_steps += 1
-                if d:
-                    break
+        simulate(self.env, self.agent, episodes=EPISODES_N,
+                 max_episode_steps=MAX_EPISODE_STEPS, render=False)
 
-        last_x_episodes = int(LAST_EPISODES_FACTOR * EPISODES_N)
-        mean_return = torch.mean(torch.Tensor(self.agent.returns[-last_x_episodes:])).item()
+        last_n_episodes = int(LAST_EPISODES_FACTOR * EPISODES_N)
+        mean_return = self.agent.evaluate(last_n_episodes)
 
         return {"mean_return": mean_return}
 
