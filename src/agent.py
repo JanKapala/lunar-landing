@@ -323,6 +323,10 @@ class Agent:
 
         self.writer.flush()
 
+    def evaluate(self, last_n_episodes=100):
+        mean_return = torch.mean(torch.Tensor(self.returns[-last_n_episodes:])).item()
+        return mean_return
+
     def save(self, file_path):
         writer = self.writer
         self.writer = None
