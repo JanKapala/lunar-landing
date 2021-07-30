@@ -1,10 +1,4 @@
-import gym
-from gym.logger import ERROR
 from tqdm.auto import trange
-
-from definitions import LOG_DIR
-from src.agent import Agent
-from src.utils import timeit
 
 
 def simulate(env, agent, episodes, render=True, max_episode_steps=None, progress_bar=True):
