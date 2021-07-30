@@ -7,8 +7,12 @@ from src.agent import Agent
 from src.utils import timeit
 
 
-def simulate(env, agent, episodes, render=True, max_episode_steps=None):
-    for i in trange(episodes):
+def simulate(env, agent, episodes, render=True, max_episode_steps=None, progress_bar=True):
+    if progress_bar:
+        custom_range = trange
+    else:
+        custom_range = range
+    for _ in custom_range(episodes):
         S = env.reset()
         episode_steps = 0
         while True:
