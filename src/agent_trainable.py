@@ -54,8 +54,14 @@ class AgentTrainable(tune.Trainable):
             self.agent = self.agent.to("cuda")
 
     def step(self):
-        simulate(self.env, self.agent, episodes=EPISODES_N,
-                 max_episode_steps=MAX_EPISODE_STEPS, render=False)
+        simulate(
+            self.env,
+            self.agent,
+            episodes=EPISODES_N,
+            max_episode_steps=MAX_EPISODE_STEPS,
+            render=False,
+            progress_bar=False
+        )
 
         last_n_episodes = int(LAST_EPISODES_FACTOR * EPISODES_N)
         mean_return = self.agent.evaluate(last_n_episodes)
