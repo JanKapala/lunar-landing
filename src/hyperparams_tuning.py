@@ -14,7 +14,7 @@ if __name__ == "__main__":
     MAX_CPU_N = PERC_SYSTEM_LOAD*CPU_N
     MAX_GPU_N = PERC_SYSTEM_LOAD*GPU_N
 
-    TRIALS_N = 8
+    TRIALS_N = 4
 
     cpu_per_trial = MAX_CPU_N/TRIALS_N
     if cpu_per_trial > 1:
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         metric="mean_return",
         mode="max",
         fail_fast=True,
-        stop={"training_iteration": 40, "mean_return": 200},
+        stop={"training_iteration": 20, "mean_return": 200},
         num_samples=TRIALS_N,
         resources_per_trial={'cpu': cpu_per_trial, 'gpu': gpu_per_trial},
         local_dir=LOG_DIR,
