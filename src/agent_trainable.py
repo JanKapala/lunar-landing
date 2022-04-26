@@ -1,22 +1,20 @@
 import os
-import pickle
-import logging
-
 import gym
 import torch
-
 from ray import tune
-from torch.optim import SGD, Adam
 
 from src.agent import Agent
+from src.simulation import simulate
 
 EPISODES_N = 10
 MAX_EPISODE_STEPS = 1000
-LAST_EPISODES_FACTOR = 0.1
+LAST_EPISODES = 10
 
 
 class AgentTrainable(tune.Trainable):
     def setup(self, config):
+        self.config = config
+
         # Instantiate environment and agent
         self.env = gym.make("LunarLanderContinuous-v2")
 
@@ -25,7 +23,7 @@ class AgentTrainable(tune.Trainable):
         action_high = self.env.action_space.high
 
         self.agent = Agent(
-            device="cuda",
+            device="cpu",
             state_dim=state_dim,
             action_dim=action_dim,
             action_high=action_high,
@@ -41,60 +39,62 @@ class AgentTrainable(tune.Trainable):
             exploration=True,
             noise_sigma=config["noise_sigma"],
             train_after=1,
-            # train_steps_per_update=config["train_steps_per_update"],
-            train_steps_per_update=config["learning_freq"],  # keep them synchronized to keep the same execution time
+            # train_steps_per_update and learning_freq should be
+            # synchronized to keep the same execution time among trials
+            train_steps_per_update=config["learning_freq"],
             writer=None,
         )
 
-        # self.agent = self.agent.to("cpu")
+        if torch.cuda.is_available():
+            self.agent = self.agent.to("cuda")
 
     def step(self):
-        for episode_i in range(EPISODES_N):
-            S = self.env.reset()
-            episode_steps = 0
-            while True:
-                A = self.agent.act(S)
-                S_prim, R, d, _ = self.env.step(A)
-                if MAX_EPISODE_STEPS is not None and episode_steps >= MAX_EPISODE_STEPS:
-                    d = True
-                self.agent.observe(R, S_prim, d)
-                S = S_prim
-                episode_steps += 1
-                if d:
-                    break
+        simulate(
+            self.env,
+            self.agent,
+            episodes=EPISODES_N,
+            max_episode_steps=MAX_EPISODE_STEPS,
+            render=False,
+            progress_bar=False
+        )
 
-        last_x_episodes = int(LAST_EPISODES_FACTOR * EPISODES_N)
-        mean_return = torch.mean(torch.Tensor(self.agent.returns[-last_x_episodes:])).item()
+        mean_return = self.agent.evaluate(LAST_EPISODES)
 
         return {"mean_return": mean_return}
 
     def cleanup(self):
         self.env.close()
 
-    def reset_config(self, new_config):
-        self.agent.replay_buffer_max_size = new_config["replay_buffer_max_size"],
-        self.agent.batch_size = new_config["batch_size"]
-        self.agent.learning_freq = new_config["learning_freq"]
-        self.agent.γ = new_config["γ"]
-        self.agent.μ_θ_α = new_config["μ_θ_α"]
-        self.agent.μ_θ_optimizer = Adam(self.agent.μ_θ.parameters(), self.agent.μ_θ_α)
-        self.agent.Q_Φ_α = new_config["Q_Φ_α"]
-        self.agent.Q_Φ_optimizer = Adam(self.agent.Q_Φ.parameters(), self.agent.Q_Φ_α)
-        self.agent.ρ = new_config["ρ"]
-        self.agent.noise_sigma = new_config["noise_sigma"]
-        # self.agent.train_steps_per_update = new_config["train_steps_per_update"]
-        self.agent.train_steps_per_update = new_config["learning_freq"],  # keep them synchronized to keep the same execution time
+    def _update_agent_params(self, config):
+        for hp_name, hp_value in config.items():
+            setattr(self.agent, hp_name, hp_value)
 
+        # train_steps_per_update and learning_freq should be
+        # synchronized to keep the same execution time among trials
+        self.agent.train_steps_per_update = config["learning_freq"]
+
+    def reset_config(self, new_config):
+        self._update_agent_params(new_config)
         return True
 
     def save_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
-        with open(path, 'wb') as file:
-            pickle.dump(self.agent, file)
+        self.agent.save(path, suppress_warning=True)
         return tmp_checkpoint_dir
 
     def load_checkpoint(self, tmp_checkpoint_dir):
         path = os.path.join(tmp_checkpoint_dir, "checkpoint")
-        with open(path, 'rb') as file:
-            self.agent = pickle.load(file)
-            self.agent = self.agent.to("cpu")
+
+        # PBT exploitation phase is carried out by `load_checkpoint` method so
+        # we want to load saved agent with its:
+        #   - weights,
+        #   - optimizers,
+        #   - replay buffer,
+        #   - etc
+        # but we want to use current config's hyperparams rather than loaded
+        # agent hyperparams, so we have to update them after agent loading.
+
+        self.agent = Agent.load(path)
+        if torch.cuda.is_available():
+            self.agent = self.agent.to("cuda")
+        self._update_agent_params(self.config)

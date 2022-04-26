@@ -16,6 +16,11 @@ def negative_mean_loss_function(x):
     return -torch.mean(x)
 
 
+def set_optimizer_lr(optimizer, new_lr):
+    for g in optimizer.param_groups:
+        g["lr"] = new_lr
+
+
 class Agent:
     def __init__(
             self,
@@ -49,7 +54,7 @@ class Agent:
         ).to(device)
 
         self.μ_θ_ℒ_function = negative_mean_loss_function  # Negative because gradient ascent
-        self.μ_θ_α = μ_θ_α
+        self._μ_θ_α = μ_θ_α
         self.μ_θ_optimizer = Adam(self.μ_θ.parameters(), μ_θ_α)
 
         # Critic
@@ -60,7 +65,7 @@ class Agent:
         ).to(device)
 
         self.Q_Φ_ℒ_function = MSELoss()
-        self.Q_Φ_α = Q_Φ_α
+        self._Q_Φ_α = Q_Φ_α
         self.Q_Φ_optimizer = Adam(self.Q_Φ.parameters(), Q_Φ_α)
 
         # Target networks
@@ -127,10 +132,29 @@ class Agent:
     def replay_buffer_max_size(self):
         return self._replay_buffer_max_size
 
-    @noise_sigma.setter
+    @replay_buffer_max_size.setter
     def replay_buffer_max_size(self, new_value):
+        new_value = int(new_value)
         self._replay_buffer_max_size = new_value
         self.Ɗ._max_size = new_value
+
+    @property
+    def μ_θ_α(self):
+        return self._μ_θ_α
+
+    @μ_θ_α.setter
+    def μ_θ_α(self, new_value):
+        self._μ_θ_α = new_value
+        set_optimizer_lr(self.μ_θ_optimizer, new_value)
+
+    @property
+    def Q_Φ_α(self):
+        return self._Q_Φ_α
+
+    @Q_Φ_α.setter
+    def Q_Φ_α(self, new_value):
+        self._Q_Φ_α = new_value
+        set_optimizer_lr(self.Q_Φ_optimizer, new_value)
 
     def act(self, S):
         self._last_S = S
@@ -242,38 +266,44 @@ class Agent:
         writer = self.writer
         self.writer = None
 
-        new_agent = deepcopy(self)
+        new = deepcopy(self)
         self.writer = writer
-        new_agent.writer = writer
+        new.writer = writer
 
-        new_agent.device = device
+        new.device = device
 
-        if new_agent.device == "cuda":
+        if new.device == "cuda":
             if torch.cuda.is_available():
                 if torch.cuda.device_count() > 1:
-                    new_agent.μ_θ = DataParallel(new_agent.μ_θ)
-                    new_agent.Q_Φ = DataParallel(new_agent.Q_Φ)
+                    new.μ_θ = DataParallel(new.μ_θ)
+                    new.Q_Φ = DataParallel(new.Q_Φ)
             else:
-                new_agent.device = "cpu"
+                new.device = "cpu"
 
-        new_agent.μ_θ_targ = deepcopy(new_agent.μ_θ)
-        new_agent.Q_Φ_targ = deepcopy(new_agent.Q_Φ)
-        new_agent.μ_θ_targ.eval()
-        new_agent.Q_Φ_targ.eval()
+        new.μ_θ_targ = deepcopy(new.μ_θ)
+        new.Q_Φ_targ = deepcopy(new.Q_Φ)
+        new.μ_θ_targ.eval()
+        new.Q_Φ_targ.eval()
 
-        new_agent.μ_θ = new_agent.μ_θ.to(new_agent.device)
-        new_agent.Q_Φ = new_agent.Q_Φ.to(new_agent.device)
-        new_agent.μ_θ_targ = new_agent.μ_θ_targ.to(new_agent.device)
-        new_agent.Q_Φ_targ = new_agent.Q_Φ_targ.to(new_agent.device)
+        new.μ_θ = new.μ_θ.to(new.device)
+        new.Q_Φ = new.Q_Φ.to(new.device)
+        new.μ_θ_targ = new.μ_θ_targ.to(new.device)
+        new.Q_Φ_targ = new.Q_Φ_targ.to(new.device)
 
-        # Optimizer has to be instantiated after moving nets to selected device
-        new_agent.μ_θ_optimizer = Adam(new_agent.μ_θ.parameters(), new_agent.μ_θ_α)
-        new_agent.Q_Φ_optimizer = Adam(new_agent.Q_Φ.parameters(), new_agent.Q_Φ_α)
+        # Optimizers has to be re-instantiated after moving nets to selected device
+        new.μ_θ_optimizer = new.μ_θ_optimizer.__class__(
+            new.μ_θ.parameters(),
+            new.μ_θ_α
+        )
+        new.Q_Φ_optimizer = new.Q_Φ_optimizer.__class__(
+            new.μ_θ.parameters(),
+            new.μ_θ_α
+        )
 
-        new_agent.μ_θ.action_scale = new_agent.μ_θ.action_scale.to(new_agent.device)
-        new_agent.μ_θ_targ.action_scale = new_agent.μ_θ_targ.action_scale.to(new_agent.device)
+        new.μ_θ.action_scale = new.μ_θ.action_scale.to(new.device)
+        new.μ_θ_targ.action_scale = new.μ_θ_targ.action_scale.to(new.device)
 
-        return new_agent
+        return new
 
     def _log(self):
         if self.writer is None:
@@ -294,14 +324,19 @@ class Agent:
 
         self.writer.flush()
 
-    def save(self, file_path):
+    def evaluate(self, last_n_episodes=100):
+        mean_return = torch.mean(torch.Tensor(self.returns[-last_n_episodes:])).item()
+        return mean_return
+
+    def save(self, file_path, suppress_warning=False):
         writer = self.writer
         self.writer = None
         with open(file_path, "wb") as file:
             pickle.dump(self, file)
         self.writer = writer
-        print("Agent saved successfully! agent.writer object can't be saved so"
-              " this filed has been set to `None`")
+        if not suppress_warning:
+            print("Agent saved successfully! (agent.writer object can't be saved so"
+                  " this field has been set to `None`)")
 
     @classmethod
     def load(cls, file_path):
